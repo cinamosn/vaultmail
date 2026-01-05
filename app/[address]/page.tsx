@@ -1,7 +1,20 @@
 import { InboxInterface } from "@/components/inbox-interface";
 import { Shield, Zap, Globe } from "lucide-react";
+import { redirect } from "next/navigation";
 
-export default function Home() {
+export default async function Page({
+    params,
+  }: {
+    params: Promise<{ address: string }>
+  }) {
+  const address = (await params).address;
+
+  // Simple validation
+  const decoded = decodeURIComponent(address);
+  if (!decoded.includes('@')) {
+      redirect('/');
+  }
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-background to-background/50 relative overflow-hidden flex flex-col">
       {/* Background Blobs */}
@@ -11,14 +24,14 @@ export default function Home() {
       {/* Navbar */}
       <header className="border-b border-white/5 bg-background/50 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 font-bold text-xl">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-              <Shield className="h-5 w-5 text-white" />
-            </div>
-            <span>VaultMail</span>
-          </div>
+            <a href="/" className="flex items-center gap-2 font-bold text-xl hover:opacity-80 transition-opacity">
+                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    <Shield className="h-5 w-5 text-white" />
+                </div>
+                <span>VaultMail</span>
+            </a>
           <a
-            href="https://github.com/yimikami/vaultmail"
+            href="https://github.com/yimikami/dispomail"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm font-medium text-muted-foreground hover:text-white transition-colors"
@@ -40,7 +53,7 @@ export default function Home() {
             </p>
          </div>
 
-         <InboxInterface />
+         <InboxInterface initialAddress={decodeURIComponent(address)} />
 
          {/* Features Grid */}
          <div className="max-w-6xl mx-auto px-4 mt-24 grid md:grid-cols-3 gap-8">
