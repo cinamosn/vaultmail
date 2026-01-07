@@ -15,10 +15,10 @@ export default function Home() {
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
               <Shield className="h-5 w-5 text-white" />
             </div>
-            <span>VaultMail</span>
+            <span>YS Mail</span>
           </div>
           <a
-            href="https://github.com/yimikami/vaultmail"
+            href="https://github.com/yasirarism"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm font-medium text-muted-foreground hover:text-white transition-colors"
@@ -35,7 +35,7 @@ export default function Home() {
               Disposable Email <br/> for Developers
             </h1>
             <p className="text-muted-foreground text-lg">
-              Secure, serverless temporary email service deployed on Vercel. 
+              Secure, serverless temporary email service. 
               Bring your own domain or use the default.
             </p>
          </div>
@@ -63,7 +63,7 @@ export default function Home() {
       </div>
 
       <footer className="border-t border-white/5 py-8 mt-12 text-center text-muted-foreground text-sm">
-        <p>© {new Date().getFullYear()} VaultMail. Open Source.</p>
+        <p>© {new Date().getFullYear()} YS Mail. Open Source.</p>
       </footer>
     </main>
   );
