@@ -13,7 +13,7 @@ interface SettingsDialogProps {
     currentAddress: string;
 }
 
-const SYSTEM_DOMAINS = ['vaultmail.dpdns.org', 'vaultmail.qzz.io'];
+const SYSTEM_DOMAINS = ['ysweb.biz.id', 'ysweb.id', 'ysdev.net'];
 
 export const RETENTION_OPTIONS = [
     { label: '30 Minutes', value: 1800 },
