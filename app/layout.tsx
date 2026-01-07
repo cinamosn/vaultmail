@@ -6,8 +6,8 @@ import { Toaster } from 'sonner';
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "VaultMail - Secure Disposable Email",
-  description: "Temporary email service deployed on Vercel with custom domains.",
+  title: "YS Mail - Secure Disposable Email",
+  description: "Self Hosted Temporary email service with custom domains.",
 };
 
 export default function RootLayout({
