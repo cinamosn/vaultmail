@@ -49,7 +49,7 @@ export function InboxInterface({ initialAddress }: InboxInterfaceProps) {
         setSavedDomains(JSON.parse(savedDoms));
     } else {
         // Ensure defaults are set if nothing saved
-        localStorage.setItem('dispo_domains', JSON.stringify(['vaultmail.dpdns.org', 'vaultmail.qzz.io']));
+        localStorage.setItem('dispo_domains', JSON.stringify(['ysweb.biz.id', 'ysdev.net', 'ysweb.id']));
     }
 
     if (savedHist) setHistory(JSON.parse(savedHist));
