@@ -28,12 +28,12 @@ interface InboxInterfaceProps {
 
 export function InboxInterface({ initialAddress }: InboxInterfaceProps) {
   const [address, setAddress] = useState<string>(initialAddress || '');
-  const [domain, setDomain] = useState<string>('vaultmail.dpdns.org');
+  const [domain, setDomain] = useState<string>('ysweb.biz.id');
   const [emails, setEmails] = useState<Email[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [savedDomains, setSavedDomains] = useState<string[]>(['vaultmail.dpdns.org', 'vaultmail.qzz.io']);
+  const [savedDomains, setSavedDomains] = useState<string[]>(['ysweb.biz.id', 'ysweb.id', 'ysdev.net']);
   const [history, setHistory] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [isAddDomainOpen, setIsAddDomainOpen] = useState(false);
