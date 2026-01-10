@@ -413,13 +413,13 @@ export function InboxInterface({ initialAddress }: InboxInterfaceProps) {
                     {/* Body */}
                     <div className="flex-1 overflow-y-auto p-6 bg-white">
                          <div 
-                            className="prose prose-sm max-w-none text-black"
+                            className="prose prose-base md:prose-lg max-w-none text-black"
                             dangerouslySetInnerHTML={{ __html: selectedEmail.html || `<p>${selectedEmail.text}</p>` }}
                         />
                     </div>
                 </div>
             ) : (
-                <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-4">
+                <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-4 text-base md:text-lg font-semibold">
                     <div className="p-4 rounded-full bg-white/5 border border-white/5">
                         <Mail className="h-8 w-8 opacity-50" />
                     </div>
