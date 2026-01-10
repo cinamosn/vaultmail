@@ -39,6 +39,21 @@ export function InboxInterface({ initialAddress }: InboxInterfaceProps) {
   const [isAddDomainOpen, setIsAddDomainOpen] = useState(false);
   const [retention, setRetention] = useState<number>(86400);
 
+  const stripEmailStyles = useCallback((html: string) => {
+    if (!html) return '';
+
+    if (typeof window === 'undefined') {
+      return html
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<link[^>]*rel=["']?stylesheet["']?[^>]*>/gi, '');
+    }
+
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('style, script, link[rel="stylesheet"]').forEach((node) => node.remove());
+    return doc.body.innerHTML || '';
+  }, []);
+
   // Load saved data
   useEffect(() => {
     const savedDoms = localStorage.getItem('dispo_domains');
@@ -414,7 +429,11 @@ export function InboxInterface({ initialAddress }: InboxInterfaceProps) {
                     <div className="flex-1 overflow-y-auto p-6 bg-white">
                          <div 
                             className="prose prose-base md:prose-lg max-w-none text-black"
-                            dangerouslySetInnerHTML={{ __html: selectedEmail.html || `<p>${selectedEmail.text}</p>` }}
+                            dangerouslySetInnerHTML={{
+                              __html: stripEmailStyles(
+                                selectedEmail.html || `<p>${selectedEmail.text}</p>`
+                              ),
+                            }}
                         />
                     </div>
                 </div>
