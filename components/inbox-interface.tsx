@@ -336,9 +336,9 @@ export function InboxInterface({ initialAddress }: InboxInterfaceProps) {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[75vh] md:h-[80vh]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-auto md:h-[80vh]">
         {/* Email List */}
-        <div className="md:col-span-1 glass-card rounded-2xl overflow-hidden flex flex-col">
+        <div className="md:col-span-1 glass-card rounded-2xl overflow-hidden flex flex-col min-h-[45vh] md:min-h-0">
             <div className="p-4 border-b border-white/5 flex justify-between items-center bg-black/20">
                 <h3 className="font-semibold flex items-center gap-2">
                     <Mail className="h-4 w-4 text-blue-400" /> Inbox
@@ -388,7 +388,7 @@ export function InboxInterface({ initialAddress }: InboxInterfaceProps) {
         </div>
 
         {/* Email Content */}
-        <div className="md:col-span-2 glass-card rounded-2xl overflow-hidden flex flex-col h-full bg-black/40">
+        <div className="md:col-span-2 glass-card rounded-2xl overflow-hidden flex flex-col h-full min-h-[55vh] md:min-h-0 bg-black/40">
             {selectedEmail ? (
                 <div className="flex flex-col h-full">
                     {/* Header */}
