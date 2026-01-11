@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { DEFAULT_DOMAINS, DEFAULT_EMAIL, getDefaultEmailDomain } from '@/lib/config';
-import { getTranslations } from '@/lib/i18n';
+import { getRetentionOptions, getTranslations, Locale } from '@/lib/i18n';
 
 // Types
 interface Email {
@@ -22,14 +22,16 @@ interface Email {
   to: string;
 }
 
-import { SettingsDialog, RETENTION_OPTIONS } from './settings-dialog';
+import { SettingsDialog } from './settings-dialog';
 
 interface InboxInterfaceProps {
     initialAddress?: string;
+    locale?: Locale;
 }
 
-export function InboxInterface({ initialAddress }: InboxInterfaceProps) {
-  const t = getTranslations();
+export function InboxInterface({ initialAddress, locale }: InboxInterfaceProps) {
+  const t = getTranslations(locale);
+  const retentionOptions = getRetentionOptions(locale);
   const [address, setAddress] = useState<string>(initialAddress || '');
   const [domain, setDomain] = useState<string>(getDefaultEmailDomain());
   const [emails, setEmails] = useState<Email[]>([]);
@@ -186,7 +188,7 @@ export function InboxInterface({ initialAddress }: InboxInterfaceProps) {
               {t.inboxTitle}
             </h2>
             <p className="text-muted-foreground text-sm">
-              {t.inboxHintPrefix} {t.inboxHintSuffix} <span className="text-purple-400 font-medium">{RETENTION_OPTIONS.find(o => o.value === retention)?.label || t.retentionOptions.hours24}</span>.
+              {t.inboxHintPrefix} {t.inboxHintSuffix} <span className="text-purple-400 font-medium">{retentionOptions.find(o => o.value === retention)?.label || t.retentionOptions.hours24}</span>.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -350,6 +352,8 @@ export function InboxInterface({ initialAddress }: InboxInterfaceProps) {
             onOpenChange={setIsAddDomainOpen}
             savedDomains={savedDomains}
             currentAddress={address}
+            retentionOptions={retentionOptions}
+            translations={t}
             onRetentionChange={setRetention}
             onUpdateDomains={(newDomains) => {
                 const combined = [...new Set([...DEFAULT_DOMAINS, ...newDomains])];

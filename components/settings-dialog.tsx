@@ -5,19 +5,9 @@ import { X, Trash2, Plus, Globe, Clock, Settings2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { DEFAULT_DOMAINS } from '@/lib/config';
-import { getRetentionOptions, getTranslations } from '@/lib/i18n';
-
-interface SettingsDialogProps {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    savedDomains: string[];
-    onUpdateDomains: (domains: string[]) => void;
-    currentAddress: string;
-}
+import { Translations } from '@/lib/i18n';
 
 const SYSTEM_DOMAINS = DEFAULT_DOMAINS;
-
-export const RETENTION_OPTIONS = getRetentionOptions();
 
 interface SettingsDialogProps {
     open: boolean;
@@ -26,10 +16,12 @@ interface SettingsDialogProps {
     onUpdateDomains: (domains: string[]) => void;
     currentAddress: string;
     onRetentionChange?: (seconds: number) => void;
+    retentionOptions: { label: string; value: number }[];
+    translations: Translations;
 }
 
-export function SettingsDialog({ open, onOpenChange, savedDomains, onUpdateDomains, currentAddress, onRetentionChange }: SettingsDialogProps) {
-    const t = getTranslations();
+export function SettingsDialog({ open, onOpenChange, savedDomains, onUpdateDomains, currentAddress, onRetentionChange, retentionOptions, translations }: SettingsDialogProps) {
+    const t = translations;
     const [activeTab, setActiveTab] = useState<'domains' | 'retention'>('retention');
     const [newDomain, setNewDomain] = useState('');
     const [retention, setRetention] = useState<number>(86400);
@@ -149,7 +141,7 @@ export function SettingsDialog({ open, onOpenChange, savedDomains, onUpdateDomai
                                             <div className="space-y-3">
                                                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">{t.retentionDurationLabel}</label>
                                                 <div className="grid grid-cols-1 gap-2">
-                                                    {RETENTION_OPTIONS.map((opt) => (
+                                                    {retentionOptions.map((opt) => (
                                                         <button
                                                             key={opt.value}
                                                             onClick={() => handleRetentionSave(opt.value)}
