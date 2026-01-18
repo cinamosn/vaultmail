@@ -14,9 +14,27 @@ export default {
           .filter(Boolean);
         const forwardEmail = env.FORWARD_EMAIL;
 
+        const parsedSenderAddress = email?.sender?.value?.[0]?.address;
+        const parsedSenderName = email?.sender?.value?.[0]?.name;
         const parsedFromAddress = email?.from?.value?.[0]?.address;
-        const parsedFromText = email?.from?.text;
-        const parsedFrom = parsedFromAddress || parsedFromText || message.from;
+        const parsedFromName = email?.from?.value?.[0]?.name;
+        const parsedFromText = email?.from?.text || message.headers.get('from');
+        const fallbackFromName = parsedFromAddress
+          ? parsedFromAddress.split('@').pop()?.replace(/^mail\./, '')
+          : undefined;
+        const cleanName = (value) => value?.replace(/^"+|"+$/g, '').trim();
+        const parsedFrom =
+          parsedSenderName && parsedSenderAddress
+            ? `${cleanName(parsedSenderName)} <${parsedSenderAddress}>`
+            : parsedFromName && parsedFromAddress
+              ? `${cleanName(parsedFromName)} <${parsedFromAddress}>`
+              : cleanName(parsedSenderName) ||
+                cleanName(parsedFromName) ||
+                parsedFromText ||
+                fallbackFromName ||
+                parsedFromAddress ||
+                parsedSenderAddress ||
+                message.from;
 
         const recipients = Array.isArray(message.to) ? message.to : [message.to];
         const shouldForward =

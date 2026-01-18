@@ -1,7 +1,97 @@
 import { redis } from '@/lib/redis';
 import { NextResponse } from 'next/server';
 import { extractEmail } from '@/lib/utils';
+import { RETENTION_SETTINGS_KEY } from '@/lib/admin-auth';
 import crypto from 'crypto';
+
+type TelegramSettings = {
+  enabled: boolean;
+  botToken: string;
+  chatId: string;
+};
+
+type RetentionSettings = {
+  seconds: number;
+};
+
+const TELEGRAM_SETTINGS_KEY = 'settings:telegram';
+
+const parseRetentionSettings = (value: unknown): RetentionSettings | null => {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value) as RetentionSettings;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof value === 'object') {
+    return value as RetentionSettings;
+  }
+  return null;
+};
+
+const parseSettings = (value: unknown): TelegramSettings | null => {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value) as TelegramSettings;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof value === 'object') {
+    return value as TelegramSettings;
+  }
+  return null;
+};
+
+const sendTelegramNotification = async (payload: {
+  from: string;
+  to: string;
+  subject: string;
+  text: string;
+}) => {
+  const settingsRaw = await redis.get(TELEGRAM_SETTINGS_KEY);
+  const settings = parseSettings(settingsRaw);
+
+  if (!settings?.enabled || !settings.botToken || !settings.chatId) {
+    return;
+  }
+
+  const messageLines = [
+    '📬 New Inbox Message',
+    `From: ${payload.from}`,
+    `To: ${payload.to}`,
+    `Subject: ${payload.subject}`,
+    '',
+    payload.text
+  ];
+
+  const response = await fetch(
+    `https://api.telegram.org/bot${settings.botToken}/sendMessage`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: settings.chatId,
+        text: messageLines.join('\n').slice(0, 4000),
+        disable_web_page_preview: true
+      })
+    }
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error('Telegram send failed:', response.status, errorBody);
+  }
+};
+
+const getRetentionSeconds = async () => {
+  const settingsRaw = await redis.get(RETENTION_SETTINGS_KEY);
+  const settings = parseRetentionSettings(settingsRaw);
+  return settings?.seconds || 86400;
+};
 
 export async function POST(req: Request) {
   try {
@@ -47,34 +137,21 @@ export async function POST(req: Request) {
 
     const key = `inbox:${cleanTo}`;
     
-    // Check for custom retention settings
-    const settingsKey = `settings:${cleanTo}`;
-    const settingsRaw = await redis.get(settingsKey);
-    let retention = 86400; // Default 24h
-
-    if (settingsRaw) {
-        try {
-            // If stored as JSON string
-            if (typeof settingsRaw === 'string') {
-                 const s = JSON.parse(settingsRaw);
-                 if (s.retentionSeconds) retention = s.retentionSeconds;
-            } else if (typeof settingsRaw === 'object') {
-                 // Upstash REST client might return object directly if auto-deserializing
-                 const s = settingsRaw as any;
-                 if (s.retentionSeconds) retention = s.retentionSeconds;
-            }
-        } catch (e) {
-            console.error("Failed to parse settings", e);
-        }
-    }
+    const retention = await getRetentionSeconds();
     
     // Store email in a list (LIFO usually better for email? No, Redis list is generic. lpush = prepend)
     // lpush puts new emails at index 0.
     await redis.lpush(key, emailData);
     
-    // Set expiry based on retention setting
-    // Note: expire only works on the key, so it refreshes the whole list TTL.
+    // Set expiry based on global retention setting.
     await redis.expire(key, retention);
+
+    await sendTelegramNotification({
+      from,
+      to,
+      subject: subject || '(No Subject)',
+      text: text || ''
+    });
 
     return NextResponse.json({ success: true, id: emailId });
   } catch (error) {
