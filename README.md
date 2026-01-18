@@ -52,7 +52,12 @@ We include a pre-configured worker in the `worker/` directory.
     ```bash
     cd worker
     npm install
-    # Edit src/index.js -> Update TARGET_URL to your Vercel URL
+    # Configure worker environment variables in Cloudflare (or via wrangler)
+    # Required:
+    #   WEBHOOK_URL=https://your-vercel-app.vercel.app/api/webhook
+    # Optional (forward specific domains to a verified Email Routing address):
+    #   FORWARD_DOMAINS=example.com,anotherdomain.com
+    #   FORWARD_EMAIL=verified@yourdomain.com
     npm run deploy
     ```
 
@@ -60,6 +65,16 @@ We include a pre-configured worker in the `worker/` directory.
     *   In Cloudflare Email Routing > **Routes**.
     *   Create a "Catch-All" route.
     *   Action: `Send to Worker` -> Destination: `dispomail-forwarder` (or whatever you named it).
+
+4.  **Optional: GitHub Actions Deploy**:
+    *   Set repository secrets:
+        *   `CLOUDFLARE_API_TOKEN`
+        *   `CLOUDFLARE_ACCOUNT_ID`
+        *   `WEBHOOK_URL` (required)
+        *   `FORWARD_DOMAINS` (optional)
+        *   `FORWARD_EMAIL` (optional)
+    *   Pushing changes under `worker/` will trigger `.github/workflows/worker-deploy.yml`.
+    *   The workflow syncs the listed secrets on deploy so values stay consistent across redeploys.
 
 ## 🛠️ Local Development
 
