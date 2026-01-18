@@ -4,10 +4,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { RefreshCw, Copy, Mail, Loader2, ArrowRight, Trash2, Shield, History, ChevronDown, X, Settings2 } from 'lucide-react';
+import { RefreshCw, Copy, Mail, Loader2, ArrowRight, Trash2, Shield, History, ChevronDown, X, Settings2, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { cn, getSenderInfo } from '@/lib/utils';
 import { DEFAULT_DOMAINS, DEFAULT_EMAIL, getDefaultEmailDomain } from '@/lib/config';
 import { getTranslations, Locale } from '@/lib/i18n';
 
@@ -18,8 +18,17 @@ interface Email {
   subject: string;
   text: string;
   html: string;
+  attachments?: EmailAttachment[];
   receivedAt: string;
   to: string;
+}
+
+interface EmailAttachment {
+  filename?: string;
+  contentType?: string;
+  size?: number;
+  contentBase64?: string;
+  contentId?: string;
 }
 
 import { SettingsDialog } from './settings-dialog';
@@ -43,6 +52,79 @@ export function InboxInterface({ initialAddress, locale, retentionLabel }: Inbox
   const [showHistory, setShowHistory] = useState(false);
   const [isAddDomainOpen, setIsAddDomainOpen] = useState(false);
   const [showDomainMenu, setShowDomainMenu] = useState(false);
+  const [domainExpiration, setDomainExpiration] = useState<string | null>(null);
+  const [domainStatusLoading, setDomainStatusLoading] = useState(false);
+
+  const selectedSender = selectedEmail ? getSenderInfo(selectedEmail.from) : null;
+  const domainExpirationDate = domainExpiration ? new Date(domainExpiration) : null;
+  const isDomainExpired = domainExpirationDate ? domainExpirationDate.getTime() < Date.now() : false;
+
+  const downloadEmail = useCallback(() => {
+    if (!selectedEmail) return;
+    const download = async () => {
+      try {
+        const response = await fetch(
+          `/api/download?address=${encodeURIComponent(address)}&emailId=${encodeURIComponent(
+            selectedEmail.id
+          )}&type=email`
+        );
+        if (!response.ok) {
+          throw new Error('Download failed');
+        }
+        const blob = await response.blob();
+        const disposition = response.headers.get('content-disposition') || '';
+        const match = disposition.match(/filename="([^"]+)"/);
+        const fileName = match?.[1] || 'email.eml';
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error(error);
+        toast.error('Gagal mengunduh email.');
+      }
+    };
+    download();
+  }, [address, selectedEmail]);
+
+  const downloadAttachment = useCallback(
+    (index: number) => {
+      if (!selectedEmail) return;
+      const download = async () => {
+        try {
+          const response = await fetch(
+            `/api/download?address=${encodeURIComponent(
+              address
+            )}&emailId=${encodeURIComponent(selectedEmail.id)}&type=attachment&index=${index}`
+          );
+          if (!response.ok) {
+            throw new Error('Download failed');
+          }
+          const blob = await response.blob();
+          const disposition = response.headers.get('content-disposition') || '';
+          const match = disposition.match(/filename="([^"]+)"/);
+          const fileName = match?.[1] || 'attachment';
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(url);
+        } catch (error) {
+          console.error(error);
+          toast.error('Gagal mengunduh attachment.');
+        }
+      };
+      download();
+    },
+    [address, selectedEmail]
+  );
 
   const stripEmailStyles = useCallback((html: string) => {
     if (!html) return '';
@@ -58,6 +140,42 @@ export function InboxInterface({ initialAddress, locale, retentionLabel }: Inbox
     doc.querySelectorAll('style, script, link[rel="stylesheet"]').forEach((node) => node.remove());
     return doc.body.innerHTML || '';
   }, []);
+
+  useEffect(() => {
+    if (!domain) return;
+    let active = true;
+    const fetchExpiration = async () => {
+      setDomainStatusLoading(true);
+      try {
+        const response = await fetch(
+          `/api/domain-expiration?domain=${encodeURIComponent(domain)}`
+        );
+        if (!response.ok) {
+          throw new Error('Failed to load domain expiration');
+        }
+        const data = (await response.json()) as {
+          expiresAt: string | null;
+          checkedAt: string;
+        };
+        if (active) {
+          setDomainExpiration(data.expiresAt ?? null);
+        }
+      } catch (error) {
+        console.error(error);
+        if (active) {
+          setDomainExpiration(null);
+        }
+      } finally {
+        if (active) {
+          setDomainStatusLoading(false);
+        }
+      }
+    };
+    fetchExpiration();
+    return () => {
+      active = false;
+    };
+  }, [domain]);
 
   // Load saved data
   useEffect(() => {
@@ -201,27 +319,28 @@ export function InboxInterface({ initialAddress, locale, retentionLabel }: Inbox
         </div>
 
         <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 flex gap-2">
-            <div className="relative flex-1">
-                <Input 
-                    value={address.split('@')[0]}
-                    onChange={(e) => {
-                        const val = e.target.value.replace(/[^a-zA-Z0-9._-]/g, '');
-                        const currentDomain = address.split('@')[1] || domain;
-                        setAddress(`${val}@${currentDomain}`);
-                        localStorage.setItem('dispo_address', `${val}@${currentDomain}`);
-                    }}
-                    onBlur={() => addToHistory(address)}
-                    className="pr-4 font-mono text-lg bg-black/20 border-white/10 h-12"
-                    placeholder={t.usernamePlaceholder}
-                />
-            </div>
-            <div className="relative flex items-center">
-                 <span className="text-muted-foreground text-lg px-2">@</span>
-            </div>
-            <div className="relative flex-1 max-w-[250px] flex gap-2">
-                 {/* Domain Selection Logic */}
-                 <div className="relative w-full">
+          <div className="flex-1 flex flex-col gap-2">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                  <Input 
+                      value={address.split('@')[0]}
+                      onChange={(e) => {
+                          const val = e.target.value.replace(/[^a-zA-Z0-9._-]/g, '');
+                          const currentDomain = address.split('@')[1] || domain;
+                          setAddress(`${val}@${currentDomain}`);
+                          localStorage.setItem('dispo_address', `${val}@${currentDomain}`);
+                      }}
+                      onBlur={() => addToHistory(address)}
+                      className="pr-4 font-mono text-lg bg-black/20 border-white/10 h-12"
+                      placeholder={t.usernamePlaceholder}
+                  />
+              </div>
+              <div className="relative flex items-center">
+                   <span className="text-muted-foreground text-lg px-2">@</span>
+              </div>
+              <div className="relative flex-1 max-w-[250px] flex gap-2">
+                   {/* Domain Selection Logic */}
+                   <div className="relative w-full">
                     <Button
                         type="button"
                         variant="ghost"
@@ -276,6 +395,25 @@ export function InboxInterface({ initialAddress, locale, retentionLabel }: Inbox
                     </AnimatePresence>
                  </div>
             </div>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {domainStatusLoading ? (
+                <span>Mengecek masa aktif domain...</span>
+              ) : domainExpirationDate ? (
+                isDomainExpired ? (
+                  <span className="text-red-300">Domain ini sudah kedaluwarsa.</span>
+                ) : (
+                  <span>
+                    Domain berakhir:{' '}
+                    <span className="text-purple-200 font-medium">
+                      {domainExpirationDate.toLocaleDateString()}
+                    </span>
+                  </span>
+                )
+              ) : (
+                <span>Masa aktif domain belum tersedia.</span>
+              )}
+            </div>
           </div>
           <div className="flex gap-2 items-center">
             {/* Settings Button */}
@@ -308,26 +446,38 @@ export function InboxInterface({ initialAddress, locale, retentionLabel }: Inbox
                         <>
                             <div className="fixed inset-0 z-40" onClick={() => setShowHistory(false)} />
                             <motion.div
-                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                className="absolute right-0 top-14 w-80 rounded-xl p-0 z-50 border border-white/10 shadow-2xl overflow-hidden bg-zinc-900"
+                                initial={{ opacity: 0, scale: 0.96 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.96 }}
+                                className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:absolute sm:inset-auto sm:right-0 sm:top-14 sm:block sm:p-0"
                             >
-                                <div className="flex justify-between items-center px-4 py-3 border-b border-white/10 bg-zinc-800/50">
+                                <div className="w-full max-w-[22rem] rounded-2xl border border-white/10 bg-black/70 p-0 text-white shadow-2xl backdrop-blur-xl sm:w-80 sm:bg-zinc-900">
+                                <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/10 bg-black/60">
                                     <span className="text-xs font-bold tracking-wider uppercase text-muted-foreground">{t.historyTitle}</span>
-                                    {history.length > 0 && (
-                                        <button 
-                                            onClick={() => {
-                                                setHistory([]);
-                                                localStorage.removeItem('dispo_history');
-                                            }}
-                                            className="text-[10px] uppercase font-bold text-red-400 hover:text-red-300 transition-colors"
+                                    <div className="flex items-center gap-2">
+                                        {history.length > 0 && (
+                                            <button 
+                                                onClick={() => {
+                                                    setHistory([]);
+                                                    localStorage.removeItem('dispo_history');
+                                                }}
+                                                className="text-[10px] uppercase font-bold text-red-400 hover:text-red-300 transition-colors"
+                                            >
+                                                {t.historyClearAll}
+                                            </button>
+                                        )}
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7 text-white/70 hover:text-white hover:bg-white/10"
+                                            onClick={() => setShowHistory(false)}
+                                            aria-label="Close history"
                                         >
-                                            {t.historyClearAll}
-                                        </button>
-                                    )}
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 </div>
-                                <div className="max-h-72 overflow-y-auto custom-scrollbar p-2 space-y-1">
+                                <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-2 space-y-1">
                                     {history.length === 0 ? (
                                         <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground space-y-2">
                                             <History className="h-8 w-8 opacity-20" />
@@ -335,9 +485,10 @@ export function InboxInterface({ initialAddress, locale, retentionLabel }: Inbox
                                         </div>
                                     ) : (
                                         history.map((histAddr) => (
-                                            <div key={histAddr} className="flex group items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-white/5">
-                                                <div 
-                                                    className="flex-1 min-w-0"
+                                            <div key={histAddr} className="flex group items-center gap-3 rounded-lg border border-transparent hover:border-white/10">
+                                                <button
+                                                    type="button"
+                                                    className="flex-1 min-w-0 rounded-lg p-3 text-left transition-colors hover:bg-white/5"
                                                     onClick={() => {
                                                         setAddress(histAddr);
                                                         const parts = histAddr.split('@');
@@ -347,26 +498,27 @@ export function InboxInterface({ initialAddress, locale, retentionLabel }: Inbox
                                                     }}
                                                 >
                                                     <p className="font-mono text-sm truncate text-gray-200">{histAddr}</p>
-                                                    <p className="textxs text-muted-foreground truncate opacity-50 text-[10px]">
+                                                    <p className="text-[11px] text-purple-200/80 truncate mt-0.5">
                                                         {emails.length > 0 && address === histAddr ? t.historyActive : t.historyRestore}
                                                     </p>
-                                                </div>
+                                                </button>
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/20 hover:text-red-400"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
+                                                    className="mr-2 h-7 w-7 opacity-70 hover:opacity-100 hover:bg-red-500/20 hover:text-red-400"
+                                                    onClick={() => {
                                                         const newHist = history.filter(h => h !== histAddr);
                                                         setHistory(newHist);
                                                         localStorage.setItem('dispo_history', JSON.stringify(newHist));
                                                     }}
+                                                    aria-label={`Remove ${histAddr}`}
                                                 >
                                                     <Trash2 className="h-3.5 w-3.5" />
                                                 </Button>
                                             </div>
                                         ))
                                     )}
+                                </div>
                                 </div>
                             </motion.div>
                         </>
@@ -418,7 +570,9 @@ export function InboxInterface({ initialAddress, locale, retentionLabel }: Inbox
                             <p>{t.waitingForIncoming}</p>
                         </motion.div>
                     ) : (
-                        emails.map((email) => (
+                        emails.map((email) => {
+                            const sender = getSenderInfo(email.from);
+                            return (
                             <motion.div
                                 key={email.id}
                                 layout
@@ -432,7 +586,7 @@ export function InboxInterface({ initialAddress, locale, retentionLabel }: Inbox
                                 )}
                             >
                                 <div className="flex justify-between items-start mb-1">
-                                    <span className="font-medium truncate max-w-[150px] text-sm">{email.from}</span>
+                                    <span className="font-medium truncate max-w-[150px] text-sm">{sender.label}</span>
                                     <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                                         {formatDistanceToNow(new Date(email.receivedAt), { addSuffix: true })}
                                     </span>
@@ -440,7 +594,7 @@ export function InboxInterface({ initialAddress, locale, retentionLabel }: Inbox
                                 <h4 className="text-sm font-semibold truncate text-blue-100">{email.subject}</h4>
                                 <p className="text-xs text-muted-foreground truncate mt-1">{email.text.slice(0, 50)}...</p>
                             </motion.div>
-                        ))
+                        )})
                     )}
                 </AnimatePresence>
             </div>
@@ -452,21 +606,47 @@ export function InboxInterface({ initialAddress, locale, retentionLabel }: Inbox
                 <div className="flex flex-col h-full">
                     {/* Header */}
                     <div className="p-6 border-b border-white/5 space-y-4 bg-black/20">
-                        <div className="flex justify-between items-start">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
                             <h1 className="text-xl font-bold text-white">{selectedEmail.subject}</h1>
-                            <span className="text-xs text-muted-foreground border border-white/10 px-2 py-1 rounded-md">
-                                {new Date(selectedEmail.receivedAt).toLocaleString()}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <Button variant="ghost" size="sm" onClick={downloadEmail}>
+                                <Download className="mr-2 h-4 w-4" />
+                                Download Email
+                              </Button>
+                              <span className="text-xs text-muted-foreground border border-white/10 px-2 py-1 rounded-md">
+                                  {new Date(selectedEmail.receivedAt).toLocaleString()}
+                              </span>
+                            </div>
                         </div>
                         <div className="flex items-center gap-3 text-sm">
                             <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold text-white text-xs">
-                                {selectedEmail.from.charAt(0).toUpperCase()}
+                                {selectedSender?.name.charAt(0).toUpperCase()}
                             </div>
                             <div className="flex flex-col">
-                                <span className="font-medium text-white">{selectedEmail.from}</span>
+                                <span className="font-medium text-white">{selectedSender?.label}</span>
                                 <span className="text-muted-foreground text-xs">{t.toLabel} {selectedEmail.to || address}</span>
                             </div>
                         </div>
+                        {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs uppercase tracking-widest text-white/60">
+                              Attachments
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {selectedEmail.attachments.map((attachment, index) => (
+                                <Button
+                                  key={`${attachment.filename || 'attachment'}-${index}`}
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => downloadAttachment(index)}
+                                >
+                                  <Download className="mr-2 h-4 w-4" />
+                                  {attachment.filename || `Attachment ${index + 1}`}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                     </div>
                     
                     {/* Body */}

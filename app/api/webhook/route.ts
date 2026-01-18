@@ -1,6 +1,6 @@
 import { redis } from '@/lib/redis';
 import { NextResponse } from 'next/server';
-import { extractEmail } from '@/lib/utils';
+import { extractEmail, getSenderInfo } from '@/lib/utils';
 import { RETENTION_SETTINGS_KEY } from '@/lib/admin-auth';
 import crypto from 'crypto';
 
@@ -59,9 +59,10 @@ const sendTelegramNotification = async (payload: {
     return;
   }
 
+  const sender = getSenderInfo(payload.from);
   const messageLines = [
     '📬 New Inbox Message',
-    `From: ${payload.from}`,
+    `From: ${sender.label}`,
     `To: ${payload.to}`,
     `Subject: ${payload.subject}`,
     '',
@@ -97,11 +98,11 @@ export async function POST(req: Request) {
   try {
     const contentType = req.headers.get('content-type') || '';
     
-    let from, to, subject, text, html;
+    let from, to, subject, text, html, attachments;
 
     if (contentType.includes('application/json')) {
       const body = await req.json();
-      ({ from, to, subject, text, html } = body);
+      ({ from, to, subject, text, html, attachments } = body);
     } else if (contentType.includes('multipart/form-data') || contentType.includes('application/x-www-form-urlencoded')) {
       const formData = await req.formData();
       from = formData.get('from') as string;
@@ -131,6 +132,7 @@ export async function POST(req: Request) {
       subject: subject || '(No Subject)',
       text: text || '',
       html: html || text || '', // Fallback
+      attachments: Array.isArray(attachments) ? attachments : [],
       receivedAt: new Date().toISOString(),
       read: false
     };
