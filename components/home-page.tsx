@@ -1,7 +1,7 @@
 'use client';
 
 import { InboxInterface } from "@/components/inbox-interface";
-import { Menu, Shield, Zap, Globe } from "lucide-react";
+import { Menu, Shield, Zap, Globe, Code2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -143,6 +143,14 @@ export function HomePage({ initialAddress }: HomePageProps) {
                           Admin Dashboard
                         </a>
                         <a
+                          href="/api-access"
+                          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/80 transition-colors hover:bg-white/10"
+                          onClick={() => setShowMenu(false)}
+                        >
+                          <Code2 className="h-4 w-4 text-blue-300" />
+                          {t.menuApiAccess}
+                        </a>
+                        <a
                           href="https://github.com/yasirarism"
                           target="_blank"
                           rel="noopener noreferrer"
@@ -197,6 +205,7 @@ export function HomePage({ initialAddress }: HomePageProps) {
                 desc={t.featureCustomDesc}
             />
          </div>
+
       </div>
 
       <footer className="border-t border-white/5 py-8 mt-12 text-center text-muted-foreground text-sm">
